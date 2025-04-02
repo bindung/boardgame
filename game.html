@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Board Game</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 20px;
+      }
+      .game-container {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+      }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(8, 50px);
+        grid-template-rows: repeat(8, 50px);
+        gap: 2px;
+        background-color: #333;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .cell {
+        width: 50px;
+        height: 50px;
+        background-color: #fff;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+      }
+      .player-info {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .player {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 5px;
+      }
+      .player.active {
+        border: 2px solid #000;
+      }
+      .status {
+        margin-top: 20px;
+        padding: 10px;
+        background-color: white;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .piece {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        transition: background-color 0.3s;
+      }
+      .next-turn-btn {
+        margin-top: 10px;
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .next-turn-btn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+      }
+      .game-setup {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .game-setup select {
+        padding: 8px;
+        margin: 0 10px;
+        font-size: 16px;
+      }
+      .start-btn {
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+      }
+      .game-board {
+        display: none;
+      }
+      .victory-message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(255, 255, 255, 0.9);
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        z-index: 1000;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      }
+      .victory-message h2 {
+        margin: 0;
+        color: #4caf50;
+        font-size: 2em;
+      }
+      .confetti {
+        position: fixed;
+        width: 10px;
+        height: 10px;
+        background-color: #f00;
+        position: absolute;
+        animation: fall linear infinite;
+        z-index: 999;
+      }
+      @keyframes fall {
+        0% {
+          transform: translateY(-100vh) rotate(0deg);
+        }
+        100% {
+          transform: translateY(100vh) rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>알록달록 땅따먹기</h1>
+    <div class="game-setup">
+      <label for="playerCount">플레이어 수:</label>
+      <select id="playerCount">
+        <option value="2">2명</option>
+        <option value="3">3명</option>
+        <option value="4">4명</option>
+      </select>
+      <button id="startGameBtn" class="start-btn">게임 시작</button>
+    </div>
+    <div class="game-board" id="gameBoard">
+      <div class="game-container">
+        <div class="board" id="board"></div>
+        <div class="player-info">
+          <h2>플레이어</h2>
+          <div id="players"></div>
+          <div class="status" id="status"></div>
+          <button id="nextTurnBtn" class="next-turn-btn" disabled>
+            다음 턴
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="victoryMessage" class="victory-message" style="display: none">
+      <h2>🎉 승리! 🎉</h2>
+      <p id="winnerText"></p>
+    </div>
+
+    <script>
+      let game = null;
+
+      document.getElementById("startGameBtn").addEventListener("click", () => {
+        const playerCount = parseInt(
+          document.getElementById("playerCount").value
+        );
+        game = new Game(playerCount);
+        document.querySelector(".game-setup").style.display = "none";
+        document.getElementById("gameBoard").style.display = "block";
+      });
+
+      class Group {
+        constructor(color, points) {
+          this.color = color;
+          this.points = points;
+        }
+
+        get size() {
+          return this.points.length;
+        }
+
+        contains(row, col) {
+          return this.points.some(
+            (point) => point.row === row && point.col === col
+          );
+        }
+
+        static findConnectedGroup(board, startRow, startCol, visited) {
+          const color = board[startRow][startCol];
+          if (!color) return null;
+
+          const points = [];
+          const stack = [{ row: startRow, col: startCol }];
+          const localVisited = visited.map((row) => [...row]); // Create a copy of visited array
+
+          while (stack.length > 0) {
+            const { row, col } = stack.pop();
+            if (localVisited[row][col]) continue;
+            localVisited[row][col] = true;
+
+            if (board[row][col] === color) {
+              points.push({ row, col });
+              const directions = [
+                [-1, 0],
+                [1, 0],
+                [0, -1],
+                [0, 1]
+              ];
+              directions.forEach(([dx, dy]) => {
+                const newRow = row + dx;
+                const newCol = col + dy;
+                if (Game.isValidPosition(newRow, newCol)) {
+                  stack.push({ row: newRow, col: newCol });
+                }
+              });
+            }
+          }
+
+          return points.length > 0 ? new Group(color, points) : null;
+        }
+
+        static findAllGroups(board) {
+          const visited = Array(8)
+            .fill()
+            .map(() => Array(8).fill(false));
+          const groups = [];
+
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              if (!visited[i][j] && board[i][j] !== null) {
+                const group = Group.findConnectedGroup(board, i, j, visited);
+                if (group) {
+                  groups.push(group);
+                  // Update visited array with all points in the found group
+                  group.points.forEach(({ row, col }) => {
+                    visited[row][col] = true;
+                  });
+                }
+              }
+            }
+          }
+
+          return groups;
+        }
+
+        static findSeparatedGroups(board, group) {
+          const visited = Array(8)
+            .fill()
+            .map(() => Array(8).fill(false));
+          const separatedGroups = [];
+
+          // Mark all points in the original group as visited
+          group.points.forEach(({ row, col }) => {
+            visited[row][col] = true;
+          });
+
+          // Find all connected components
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              if (board[i][j] === group.color && !visited[i][j]) {
+                const connectedGroup = Group.findConnectedGroup(
+                  board,
+                  i,
+                  j,
+                  visited
+                );
+                if (connectedGroup) {
+                  separatedGroups.push(connectedGroup);
+                  // Update visited array with all points in the found group
+                  connectedGroup.points.forEach(({ row, col }) => {
+                    visited[row][col] = true;
+                  });
+                }
+              }
+            }
+          }
+
+          return separatedGroups;
+        }
+      }
+
+      class Game {
+        constructor(numPlayers) {
+          this.board = Array(8)
+            .fill()
+            .map(() => Array(8).fill(null));
+          this.players = [];
+          this.currentPlayerIndex = 0;
+          this.piecesPerPlayer = 24;
+          this.firstTurnsCompleted = 0;
+          this.piecesPlacedThisTurn = 0;
+          this.territoryCounts = Array(numPlayers).fill(0);
+
+          // Initialize audio elements
+          this.putSound = new Audio("put.mp3");
+          this.turnoverSound = new Audio("turnover.mp3");
+          this.gameoverSound = new Audio("gameover.mp3");
+
+          const colors = ["red", "blue", "green", "yellow"];
+          for (let i = 0; i < numPlayers; i++) {
+            this.players.push({
+              color: colors[i],
+              piecesLeft: this.piecesPerPlayer,
+              isActive: true,
+              hasPlayedFirstTurn: false
+            });
+          }
+
+          this.initializeBoard();
+          this.updateUI();
+          this.initializeNextTurnButton();
+        }
+
+        initializeNextTurnButton() {
+          const nextTurnBtn = document.getElementById("nextTurnBtn");
+          nextTurnBtn.addEventListener("click", () => {
+            this.moveToNextPlayer();
+            this.piecesPlacedThisTurn = 0;
+            this.updateUI();
+          });
+        }
+
+        initializeBoard() {
+          const boardElement = document.getElementById("board");
+          boardElement.innerHTML = "";
+
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              const cell = document.createElement("div");
+              cell.className = "cell";
+              cell.dataset.row = i;
+              cell.dataset.col = j;
+              cell.addEventListener("click", () => this.handleCellClick(i, j));
+              boardElement.appendChild(cell);
+            }
+          }
+        }
+
+        updateUI() {
+          // Update board
+          const cells = document.querySelectorAll(".cell");
+          cells.forEach((cell) => {
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+            const piece = this.board[row][col];
+
+            if (piece !== null) {
+              cell.innerHTML = `<div class="piece" style="background-color: ${piece}"></div>`;
+            } else {
+              cell.innerHTML = "";
+            }
+          });
+
+          // Count territory for each player
+          this.territoryCounts = Array(this.players.length).fill(0);
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              if (this.board[i][j] !== null) {
+                const playerIndex = this.players.findIndex(
+                  (p) => p.color === this.board[i][j]
+                );
+                if (playerIndex !== -1) {
+                  this.territoryCounts[playerIndex]++;
+                }
+              }
+            }
+          }
+
+          // Update player info
+          const playersElement = document.getElementById("players");
+          playersElement.innerHTML = "";
+
+          this.players.forEach((player, index) => {
+            const playerDiv = document.createElement("div");
+            playerDiv.className = `player ${
+              index === this.currentPlayerIndex ? "active" : ""
+            }`;
+            playerDiv.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="piece" style="background-color: ${
+                              player.color
+                            }"></div>
+                            <span>플레이어 ${index + 1}</span>
+                            <span>(남은 말: ${player.piecesLeft}개, 영토: ${
+              this.territoryCounts[index]
+            }개)</span>
+                        </div>
+                    `;
+            playersElement.appendChild(playerDiv);
+          });
+
+          // Update status
+          const statusElement = document.getElementById("status");
+          if (this.isGameOver()) {
+            const winner = this.getWinner();
+            statusElement.textContent = winner
+              ? `게임 종료! 플레이어 ${winner + 1} 승리!`
+              : "게임 종료! 무승부!";
+
+            // Play gameover sound
+            this.gameoverSound.currentTime = 0;
+            this.gameoverSound.play();
+
+            // Show victory message and start confetti
+            if (winner !== null) {
+              const victoryMessage = document.getElementById("victoryMessage");
+              const winnerText = document.getElementById("winnerText");
+              winnerText.textContent = `플레이어 ${winner + 1}가 승리했습니다!`;
+              victoryMessage.style.display = "block";
+              this.startConfetti();
+            }
+          } else {
+            const currentPlayer = this.players[this.currentPlayerIndex];
+            if (!currentPlayer.hasPlayedFirstTurn) {
+              statusElement.textContent = `현재 턴: 플레이어 ${
+                this.currentPlayerIndex + 1
+              } (첫 턴 - 아무 곳이나 배치 가능)`;
+            } else {
+              statusElement.textContent = `현재 턴: 플레이어 ${
+                this.currentPlayerIndex + 1
+              } (이번 턴에 놓은 말: ${this.piecesPlacedThisTurn}/2)`;
+            }
+          }
+
+          // Update Next Turn button
+          const nextTurnBtn = document.getElementById("nextTurnBtn");
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          if (this.isGameOver()) {
+            nextTurnBtn.disabled = true;
+          } else if (!currentPlayer.hasPlayedFirstTurn) {
+            nextTurnBtn.disabled = true;
+          } else if (this.piecesPlacedThisTurn === 0) {
+            nextTurnBtn.disabled = true;
+          } else {
+            nextTurnBtn.disabled = false;
+          }
+        }
+
+        handleCellClick(row, col) {
+          if (this.isGameOver()) return;
+
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          if (currentPlayer.piecesLeft <= 0) return;
+
+          // Check if player can place more pieces this turn
+          if (!currentPlayer.hasPlayedFirstTurn) {
+            if (this.isValidMove(row, col)) {
+              this.placePiece(row, col);
+              // First turn automatically moves to next player
+              this.moveToNextPlayer();
+              this.piecesPlacedThisTurn = 0;
+              this.updateUI();
+            }
+          } else {
+            if (this.piecesPlacedThisTurn >= 2) return;
+            if (this.isValidMove(row, col)) {
+              this.placePiece(row, col);
+              if (this.piecesPlacedThisTurn === 2) {
+                this.moveToNextPlayer();
+                this.piecesPlacedThisTurn = 0;
+              }
+              this.updateUI();
+            }
+          }
+        }
+
+        isValidMove(row, col) {
+          if (this.board[row][col] !== null) return false;
+
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          if (currentPlayer.piecesLeft <= 0) return false;
+
+          // First turn can place anywhere
+          if (!currentPlayer.hasPlayedFirstTurn) {
+            return true;
+          }
+
+          // Check if adjacent to player's pieces
+          const directions = [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1]
+          ];
+          return directions.some(([dx, dy]) => {
+            const newRow = row + dx;
+            const newCol = col + dy;
+            return (
+              Game.isValidPosition(newRow, newCol) &&
+              this.board[newRow][newCol] === currentPlayer.color
+            );
+          });
+        }
+
+        static isValidPosition(row, col) {
+          return row >= 0 && row < 8 && col >= 0 && col < 8;
+        }
+
+        placePiece(row, col) {
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          this.board[row][col] = currentPlayer.color;
+          currentPlayer.piecesLeft--;
+          this.piecesPlacedThisTurn++;
+
+          // Play put sound
+          this.putSound.currentTime = 0;
+          this.putSound.play();
+
+          // Mark first turn as completed for current player
+          if (!currentPlayer.hasPlayedFirstTurn) {
+            currentPlayer.hasPlayedFirstTurn = true;
+            this.firstTurnsCompleted++;
+          }
+
+          // Capture adjacent pieces
+          this.captureAdjacentPieces(row, col);
+
+          // Check for separated groups
+          this.checkAndCaptureSeparatedGroups();
+
+          // Update the UI after the move
+          this.updateUI();
+        }
+
+        captureAdjacentPieces(row, col) {
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          const directions = [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1]
+          ];
+
+          directions.forEach(([dx, dy]) => {
+            const newRow = row + dx;
+            const newCol = col + dy;
+            if (Game.isValidPosition(newRow, newCol)) {
+              const adjacentPiece = this.board[newRow][newCol];
+              if (adjacentPiece && adjacentPiece !== currentPlayer.color) {
+                this.board[newRow][newCol] = currentPlayer.color;
+              }
+            }
+          });
+        }
+
+        checkAndCaptureSeparatedGroups() {
+          const currentPlayer = this.players[this.currentPlayerIndex];
+
+          // Find all groups on the board
+          const allGroups = Group.findAllGroups(this.board);
+          // Group all pieces by color
+          const groupsByColor = {};
+          allGroups.forEach((group) => {
+            if (!groupsByColor[group.color]) {
+              groupsByColor[group.color] = [];
+            }
+            groupsByColor[group.color].push(group);
+          });
+
+          // Process each opponent's color
+          Object.entries(groupsByColor).forEach(([color, groups]) => {
+            if (color === currentPlayer.color) return;
+
+            // If a color has more than one group, it means they are separated
+            if (groups.length > 1) {
+              // Sort groups by size
+              groups.sort((a, b) => a.size - b.size);
+              // Keep the largest group, capture all others
+              for (let i = 0; i < groups.length - 1; i++) {
+                groups[i].points.forEach(({ row, col }) => {
+                  this.board[row][col] = currentPlayer.color;
+                });
+              }
+            }
+          });
+        }
+
+        moveToNextPlayer() {
+          this.currentPlayerIndex =
+            (this.currentPlayerIndex + 1) % this.players.length;
+          while (
+            !this.players[this.currentPlayerIndex].isActive &&
+            !this.isGameOver()
+          ) {
+            this.currentPlayerIndex =
+              (this.currentPlayerIndex + 1) % this.players.length;
+          }
+
+          // Play turnover sound
+          this.turnoverSound.currentTime = 0;
+          this.turnoverSound.play();
+        }
+
+        isGameOver() {
+          // Check if any player has no pieces left
+          const hasNoPieces = this.players.some(
+            (player) => player.piecesLeft <= 0
+          );
+          if (hasNoPieces) return true;
+
+          // If first turns are not completed, game is not over
+          if (this.firstTurnsCompleted < this.players.length) {
+            return false;
+          }
+
+          // Check if current player has any valid moves left
+          const currentPlayer = this.players[this.currentPlayerIndex];
+          if (currentPlayer.piecesLeft > 0) {
+            // Check all empty cells adjacent to current player's pieces
+            for (let i = 0; i < 8; i++) {
+              for (let j = 0; j < 8; j++) {
+                if (this.board[i][j] === null) {
+                  // Check if this empty cell is adjacent to current player's pieces
+                  const directions = [
+                    [-1, 0],
+                    [1, 0],
+                    [0, -1],
+                    [0, 1]
+                  ];
+                  const isAdjacentToPlayer = directions.some(([dx, dy]) => {
+                    const newRow = i + dx;
+                    const newCol = j + dy;
+                    return (
+                      Game.isValidPosition(newRow, newCol) &&
+                      this.board[newRow][newCol] === currentPlayer.color
+                    );
+                  });
+
+                  if (isAdjacentToPlayer) {
+                    return false; // Found a valid move
+                  }
+                }
+              }
+            }
+            // If we get here, current player has no valid moves left
+            return true;
+          }
+
+          // Check if any player can make a move
+          for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+              if (this.board[i][j] === null) {
+                for (
+                  let playerIndex = 0;
+                  playerIndex < this.players.length;
+                  playerIndex++
+                ) {
+                  if (this.players[playerIndex].piecesLeft > 0) {
+                    const originalPlayerIndex = this.currentPlayerIndex;
+                    this.currentPlayerIndex = playerIndex;
+                    if (this.isValidMove(i, j)) {
+                      this.currentPlayerIndex = originalPlayerIndex;
+                      return false;
+                    }
+                    this.currentPlayerIndex = originalPlayerIndex;
+                  }
+                }
+              }
+            }
+          }
+          return true;
+        }
+
+        getWinner() {
+          // Find player with most territory
+          const maxTerritory = Math.max(...this.territoryCounts);
+          const winners = this.territoryCounts
+            .map((count, index) => (count === maxTerritory ? index : -1))
+            .filter((index) => index !== -1);
+
+          return winners.length === 1 ? winners[0] : null;
+        }
+
+        startConfetti() {
+          const colors = [
+            "#ff0000",
+            "#00ff00",
+            "#0000ff",
+            "#ffff00",
+            "#ff00ff",
+            "#00ffff"
+          ];
+          const confettiCount = 100;
+
+          for (let i = 0; i < confettiCount; i++) {
+            const confetti = document.createElement("div");
+            confetti.className = "confetti";
+            confetti.style.backgroundColor =
+              colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.left = Math.random() * 100 + "vw";
+            confetti.style.animationDuration = Math.random() * 3 + 2 + "s";
+            confetti.style.opacity = Math.random();
+            confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+            document.body.appendChild(confetti);
+
+            // Remove confetti after animation
+            setTimeout(() => {
+              confetti.remove();
+            }, 5000);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
