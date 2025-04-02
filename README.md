@@ -10,8 +10,8 @@
 
 
 ## Credit
-** 규칙 창안자: 신다솔 **
-** 구현: Cursor AI ( adviced by 신기빈 ) **
+* 규칙 창안자: 신다솔
+* 구현: Cursor AI ( adviced by 신기빈 )
 
 ## 음원 저작권
 * https://www.sellbuymusic.com/
