@@ -12,37 +12,41 @@
         align-items: center;
         background-color: #f0f0f0;
         margin: 0;
-        padding: 20px;
+        padding: 10px;
         min-height: 100vh;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 5px 0;
       }
       .game-container {
         display: flex;
-        gap: 20px;
+        gap: 10px;
         align-items: flex-start;
         width: 100%;
         max-width: 1200px;
       }
       .board {
         display: grid;
-        grid-template-columns: repeat(8, min(50px, 8vw));
-        grid-template-rows: repeat(8, min(50px, 8vw));
-        gap: 2px;
+        grid-template-columns: repeat(8, min(40px, 7vw));
+        grid-template-rows: repeat(8, min(40px, 7vw));
+        gap: 1px;
         background-color: #8b4513;
-        padding: 10px;
-        border-radius: 5px;
+        padding: 5px;
+        border-radius: 3px;
         margin: 0 auto;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
       }
       .cell {
-        width: min(50px, 8vw);
-        height: min(50px, 8vw);
+        width: min(40px, 7vw);
+        height: min(40px, 7vw);
         background-color: #d3d3d3;
         border-radius: 50%;
         cursor: pointer;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: min(24px, 4vw);
+        font-size: min(16px, 2.5vw);
         transition: background-color 0.3s;
       }
       .cell.valid-move {
@@ -54,41 +58,47 @@
       }
       .player-info {
         background-color: white;
-        padding: 20px;
-        border-radius: 5px;
+        padding: 8px;
+        border-radius: 3px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        min-width: 250px;
+        min-width: 150px;
+      }
+      .player-info h2 {
+        font-size: 14px;
+        margin: 0 0 5px 0;
       }
       .player {
-        margin: 10px 0;
-        padding: 10px;
-        border-radius: 5px;
+        margin: 4px 0;
+        padding: 4px;
+        border-radius: 3px;
+        font-size: 12px;
       }
       .player.active {
         border: 2px solid #000;
       }
       .status {
-        margin-top: 20px;
-        padding: 10px;
+        margin-top: 5px;
+        padding: 4px;
         background-color: white;
-        border-radius: 5px;
+        border-radius: 3px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        font-size: 12px;
       }
       .piece {
-        width: 40px;
-        height: 40px;
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
         transition: background-color 0.3s;
       }
       .next-turn-btn {
-        margin-top: 10px;
-        padding: 8px 16px;
+        margin-top: 5px;
+        padding: 4px 8px;
         background-color: #4caf50;
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 3px;
         cursor: pointer;
-        font-size: 16px;
+        font-size: 12px;
       }
       .next-turn-btn:disabled {
         background-color: #cccccc;
@@ -96,25 +106,25 @@
       }
       .game-setup {
         background-color: white;
-        padding: 20px;
-        border-radius: 5px;
+        padding: 8px;
+        border-radius: 3px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
+        margin-bottom: 8px;
       }
       .game-setup select {
-        padding: 8px;
-        margin: 0 10px;
-        font-size: 16px;
+        padding: 4px;
+        margin: 0 5px;
+        font-size: 12px;
       }
       .start-btn {
-        padding: 8px 16px;
+        padding: 4px 8px;
         background-color: #4caf50;
         color: white;
         border: none;
-        border-radius: 4px;
+        border-radius: 3px;
         cursor: pointer;
-        font-size: 16px;
-        margin-left: 10px;
+        font-size: 12px;
+        margin-left: 5px;
       }
       .game-board {
         display: none;
@@ -160,17 +170,21 @@
         }
         .player-info {
           width: 100%;
-          max-width: 500px;
-          margin-top: 20px;
+          max-width: 300px;
+          margin-top: 8px;
         }
         .board {
-          grid-template-columns: repeat(8, min(40px, 10vw));
-          grid-template-rows: repeat(8, min(40px, 10vw));
+          grid-template-columns: repeat(8, min(30px, 7vw));
+          grid-template-rows: repeat(8, min(30px, 7vw));
         }
         .cell {
-          width: min(40px, 10vw);
-          height: min(40px, 10vw);
-          font-size: min(20px, 3vw);
+          width: min(30px, 7vw);
+          height: min(30px, 7vw);
+          font-size: min(12px, 2vw);
+        }
+        .piece {
+          width: 18px;
+          height: 18px;
         }
       }
       @media (min-width: 769px) {
