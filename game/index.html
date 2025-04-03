@@ -13,37 +13,51 @@
         background-color: #f0f0f0;
         margin: 0;
         padding: 20px;
+        min-height: 100vh;
       }
       .game-container {
         display: flex;
         gap: 20px;
         align-items: flex-start;
+        width: 100%;
+        max-width: 1200px;
       }
       .board {
         display: grid;
-        grid-template-columns: repeat(8, 50px);
-        grid-template-rows: repeat(8, 50px);
+        grid-template-columns: repeat(8, min(50px, 8vw));
+        grid-template-rows: repeat(8, min(50px, 8vw));
         gap: 2px;
-        background-color: #333;
+        background-color: #8b4513;
         padding: 10px;
         border-radius: 5px;
+        margin: 0 auto;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
       }
       .cell {
-        width: 50px;
-        height: 50px;
-        background-color: #fff;
+        width: min(50px, 8vw);
+        height: min(50px, 8vw);
+        background-color: #d3d3d3;
         border-radius: 50%;
         cursor: pointer;
         display: flex;
         justify-content: center;
         align-items: center;
-        font-size: 24px;
+        font-size: min(24px, 4vw);
+        transition: background-color 0.3s;
+      }
+      .cell.valid-move {
+        background-color: #ffffff;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+      .cell:hover.valid-move {
+        background-color: #f5f5f5;
       }
       .player-info {
         background-color: white;
         padding: 20px;
         border-radius: 5px;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        min-width: 250px;
       }
       .player {
         margin: 10px 0;
@@ -137,6 +151,31 @@
         }
         100% {
           transform: translateY(100vh) rotate(360deg);
+        }
+      }
+      @media (max-width: 768px) {
+        .game-container {
+          flex-direction: column;
+          align-items: center;
+        }
+        .player-info {
+          width: 100%;
+          max-width: 500px;
+          margin-top: 20px;
+        }
+        .board {
+          grid-template-columns: repeat(8, min(40px, 10vw));
+          grid-template-rows: repeat(8, min(40px, 10vw));
+        }
+        .cell {
+          width: min(40px, 10vw);
+          height: min(40px, 10vw);
+          font-size: min(20px, 3vw);
+        }
+      }
+      @media (min-width: 769px) {
+        .game-container {
+          flex-direction: row;
         }
       }
     </style>
@@ -357,12 +396,26 @@
             const col = parseInt(cell.dataset.col);
             const piece = this.board[row][col];
 
+            // Remove valid-move class from all cells first
+            cell.classList.remove("valid-move");
+
             if (piece !== null) {
               cell.innerHTML = `<div class="piece" style="background-color: ${piece}"></div>`;
             } else {
               cell.innerHTML = "";
             }
           });
+
+          // Show valid moves if game is not over
+          if (!this.isGameOver()) {
+            cells.forEach((cell) => {
+              const row = parseInt(cell.dataset.row);
+              const col = parseInt(cell.dataset.col);
+              if (this.isValidMove(row, col)) {
+                cell.classList.add("valid-move");
+              }
+            });
+          }
 
           // Count territory for each player
           this.territoryCounts = Array(this.players.length).fill(0);
@@ -483,8 +536,21 @@
           const currentPlayer = this.players[this.currentPlayerIndex];
           if (currentPlayer.piecesLeft <= 0) return false;
 
-          // First turn can place anywhere
+          // First turn can place anywhere except within 2 cells of opponent pieces
           if (!currentPlayer.hasPlayedFirstTurn) {
+            // Check if the move is within 2 cells of any opponent's piece
+            for (let i = -2; i <= 2; i++) {
+              for (let j = -2; j <= 2; j++) {
+                const newRow = row + i;
+                const newCol = col + j;
+                if (Game.isValidPosition(newRow, newCol)) {
+                  const piece = this.board[newRow][newCol];
+                  if (piece && piece !== currentPlayer.color) {
+                    return false;
+                  }
+                }
+              }
+            }
             return true;
           }
 
